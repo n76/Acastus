@@ -1,14 +1,16 @@
 package me.dbarnett.acastus;
 
-import android.Manifest;
 import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.content.SharedPreferences;
+import android.location.Address;
+import android.location.Geocoder;
 import android.location.LocationManager;
+import android.Manifest;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
@@ -22,24 +24,28 @@ import android.support.v7.widget.Toolbar;
 import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
-import android.view.View;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ListView;
 import android.widget.Toast;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.List;
 
 
 /**
@@ -50,6 +56,7 @@ import java.util.TimerTask;
  * The type Main activity.
  */
 public class MainActivity extends AppCompatActivity{
+    private static final String TAG = "Acastus";
     /**
      * The Labels.
      */
@@ -105,6 +112,11 @@ public class MainActivity extends AppCompatActivity{
      * The Toolbar.
      */
     Toolbar toolbar;
+
+    /**
+     * The Geocoder
+     */
+    protected Geocoder ourGeocoder;
     /**
      * The Make request.
      */
@@ -139,6 +151,7 @@ public class MainActivity extends AppCompatActivity{
         setSupportActionBar(toolbar);
         makeRequest = new MakeAPIRequest();
         context = getApplicationContext();
+        ourGeocoder = new Geocoder(context);
         setupLocationUse();
         getInputs();
         setupMapButton();
@@ -701,44 +714,6 @@ public class MainActivity extends AppCompatActivity{
     }
 
     /**
-     * Fill lists.
-     *
-     * @param object the object
-     * @throws JSONException the json exception
-     */
-    void fillLists(JSONObject object) throws JSONException {
-        JSONArray array = object.getJSONArray("features");
-        lookupList.clear();
-        labels.clear();
-        double lat, lon;
-        for (int i = 0; i < array.length(); i++) {
-            JSONObject initialArray = array.getJSONObject(i);
-            JSONObject geometry = initialArray.getJSONObject("geometry");
-            JSONObject properties = initialArray.getJSONObject("properties");
-            JSONArray coordinates = geometry.getJSONArray("coordinates");
-            lat = coordinates.getDouble(1);
-            lon = coordinates.getDouble(0);
-            String name = properties.getString("label");
-            ResultNode tempNode = new ResultNode();
-            tempNode.lat = lat;
-            tempNode.lon = lon;
-            tempNode.name = name;
-            if (useLocation) {
-                Boolean kilometers = prefs.getBoolean("unit_length", false);
-                Double distance = geoLocation.distance(curLat, lat, curLon, lon, kilometers);
-                if (kilometers){
-                    labels.add(name + " : " + distance + " km");
-                }else{
-                    labels.add(name + " : " + distance + " mi");
-                }
-            } else {
-                labels.add(name);
-            }
-            lookupList.add(tempNode);
-        }
-    }
-
-    /**
      * Fetch search results.
      *
      * @param searchQuery the search query
@@ -746,47 +721,42 @@ public class MainActivity extends AppCompatActivity{
      * @throws JSONException the json exception
      */
     private void fetchSearchResults(String searchQuery) throws IOException, JSONException {
-        JSONObject object = makeRequest.fetchSearchResults(searchQuery);
-        fillLists(object);
-    }
+        Log.d(TAG,"fetchSearchResults("+searchQuery+")");
+        if (ourGeocoder.isPresent()) {
+            List<Address> addresses = ourGeocoder.getFromLocationName(searchQuery, 5);
 
-    /**
-     * Set search query string.
-     *
-     * @param input the input
-     * @return the string
-     */
-    private String setSearchQuery(String input) {
-        Double[] coordinates;
-        String serverAddress = prefs.getString("server_url", null);
-        if (serverAddress == null) {
-            serverAddress = getResources().getString(R.string.server_url_default);
-        }
-        if (isLocationEnabled()){
-            useLocation = prefs.getBoolean("use_location", true);
-        }
-        else {
-            useLocation = false;
-        }
-        if (useLocation) {
-            coordinates = geoLocation.getLocation();
-            if (coordinates != null) {
-                curLat = coordinates[0];
-                curLon = coordinates[1];
-            }else {
-                useLocation = false;
+            lookupList.clear();
+            labels.clear();
+
+            for (Address addr : addresses) {
+                if (addr.hasLatitude() && addr.hasLatitude()) {
+                    //Log.d(TAG,"fetchSearchResults() addr="+addr.toString());
+                    ResultNode tempNode = new ResultNode();
+                    tempNode.lat = addr.getLatitude();
+                    tempNode.lon = addr.getLongitude();
+                    tempNode.name = addr.getFeatureName();
+                    if (tempNode.name == null) {
+                        tempNode.name = addr.getAddressLine(0);
+                        for (Integer i=1; i<addr.getMaxAddressLineIndex(); i++)
+                            tempNode.name += ", " + addr.getAddressLine(i);
+                    }
+                    if (useLocation) {
+                        Boolean kilometers = prefs.getBoolean("unit_length", false);
+                        Double distance = geoLocation.distance(curLat, tempNode.lat, curLon, tempNode.lon, kilometers);
+                        if (kilometers) {
+                            labels.add(tempNode.name + " : " + distance + " km");
+                        } else {
+                            labels.add(tempNode.name + " : " + distance + " mi");
+                        }
+                    } else {
+                        labels.add(tempNode.name);
+                    }
+                    lookupList.add(tempNode);
+                }
             }
-        }
-        String searchQuery;
-        if (useLocation) {
-            searchQuery = serverAddress + "/v1/autocomplete?" + "focus.point.lat=" + curLat + "&focus.point.lon=" + curLon + "&text=" + input + "&api_key=" + prefs.getString("api_key", "");
         } else {
-            searchQuery = serverAddress + "/v1/autocomplete?text=" + input + "&api_key=" + prefs.getString("api_key", "");
+            Log.d(TAG,"fetchSearchResults(): No geocoder present?");
         }
-        System.out.println(searchQuery);
-        searchQuery = searchQuery.replace(' ', '+');
-
-        return searchQuery;
     }
 
     private class GetResults extends AsyncTask<String, Integer, String> {
@@ -798,7 +768,7 @@ public class MainActivity extends AppCompatActivity{
         }
         @Override
         protected String doInBackground(String... strings) {
-            String searchQuery = setSearchQuery(strings[0]);
+            String searchQuery = strings[0];
             if (searchQuery != null){
                 try {
                     fetchSearchResults(searchQuery);
