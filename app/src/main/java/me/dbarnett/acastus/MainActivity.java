@@ -43,6 +43,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.List;
@@ -718,12 +719,11 @@ public class MainActivity extends AppCompatActivity{
      *
      * @param searchQuery the search query
      * @throws IOException   the io exception
-     * @throws JSONException the json exception
      */
-    private void fetchSearchResults(String searchQuery) throws IOException, JSONException {
+    private void fetchSearchResults(String searchQuery) throws IOException {
         Log.d(TAG,"fetchSearchResults("+searchQuery+")");
         if (ourGeocoder.isPresent()) {
-            List<Address> addresses = ourGeocoder.getFromLocationName(searchQuery, 5);
+            List<Address> addresses = ourGeocoder.getFromLocationName(searchQuery, 20);
 
             lookupList.clear();
             labels.clear();
@@ -735,6 +735,7 @@ public class MainActivity extends AppCompatActivity{
                     tempNode.lat = addr.getLatitude();
                     tempNode.lon = addr.getLongitude();
                     tempNode.name = addr.getFeatureName();
+                    tempNode.distance = 0.0;
                     if (tempNode.name == null) {
                         tempNode.name = addr.getAddressLine(0);
                         for (Integer i=1; i<addr.getMaxAddressLineIndex(); i++)
@@ -743,15 +744,25 @@ public class MainActivity extends AppCompatActivity{
                     if (useLocation) {
                         Boolean kilometers = prefs.getBoolean("unit_length", false);
                         Double distance = geoLocation.distance(curLat, tempNode.lat, curLon, tempNode.lon, kilometers);
-                        if (kilometers) {
-                            labels.add(tempNode.name + " : " + distance + " km");
-                        } else {
-                            labels.add(tempNode.name + " : " + distance + " mi");
-                        }
-                    } else {
-                        labels.add(tempNode.name);
+                        tempNode.distance = distance;
                     }
                     lookupList.add(tempNode);
+                }
+            }
+            //Log.d(TAG,"fetchSearchResults() before sort:" + lookupList.toString());
+            Collections.sort(lookupList);
+            //Log.d(TAG,"fetchSearchResults() after sort:" + lookupList.toString());
+
+            for (ResultNode node : lookupList) {
+                if (useLocation) {
+                    Boolean kilometers = prefs.getBoolean("unit_length", false);
+                    if (kilometers) {
+                        labels.add(node.name + " : " + node.distance + " km");
+                    } else {
+                        labels.add(node.name + " : " + node.distance + " mi");
+                    }
+                } else {
+                    labels.add(node.name);
                 }
             }
         } else {
@@ -773,8 +784,6 @@ public class MainActivity extends AppCompatActivity{
                 try {
                     fetchSearchResults(searchQuery);
                 } catch (IOException e) {
-                    e.printStackTrace();
-                } catch (JSONException e) {
                     e.printStackTrace();
                 }
             }
