@@ -1,41 +1,41 @@
 package me.dbarnett.acastus;
 
-import android.app.AlertDialog;
+// See: https://developers.google.com/maps/documentation/android-sdk/map-with-marker
+// See: https://androidclarified.com/android-example-display-current-location-on-google-map-with-fusedlocationproviderapi/
+
 import android.content.ActivityNotFoundException;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.graphics.PointF;
 import android.net.Uri;
+import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
-import android.view.View;
-import android.widget.ImageButton;
-import android.widget.TextView;
 import android.widget.Toast;
 
-import com.mapzen.tangram.LngLat;
-import com.mapzen.tangram.MapController;
-import com.mapzen.tangram.MapView;
-import com.mapzen.tangram.Marker;
-import com.mapzen.tangram.TouchInput;
+import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
+import com.google.android.gms.maps.model.LatLngBounds;
+import com.google.android.gms.maps.model.Marker;
+import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.maps.GoogleMap.OnMarkerClickListener;
+import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.SupportMapFragment;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.util.ArrayList;
-
 /**
  * The type View map activity.
  */
-public class ViewMapActivity extends AppCompatActivity implements MapView.OnMapReadyCallback{
+public class ViewMapActivity extends AppCompatActivity
+        implements OnMarkerClickListener, OnMapReadyCallback {
 
-    /**
-     * The Map.
-     */
-    MapController map;
+    private static final String TAG = "Acastus";
+    private static final int DEFAULT_ZOOM = 15;
 
     /**
      * The Prefs.
@@ -43,23 +43,9 @@ public class ViewMapActivity extends AppCompatActivity implements MapView.OnMapR
     protected SharedPreferences prefs;
 
     /**
-     * The Map view.
+     * The current location
      */
-    MapView mapView;
-
-
-    /**
-     * The Point style.
-     */
-    String pointStyle = "{ style: 'points', color: '#00c853', size: [45px, 45px], order: 2000, collide: false }";
-    /**
-     * The Cur lat.
-     */
-    double curLat;
-    /**
-     * The Cur lon.
-     */
-    double curLon;
+    LatLng curLoc;
 
     /**
      * The Lookup list.
@@ -70,64 +56,72 @@ public class ViewMapActivity extends AppCompatActivity implements MapView.OnMapR
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         prefs = PreferenceManager.getDefaultSharedPreferences(this);
-        if (prefs.getBoolean("app_theme", false)){
-            setTheme(R.style.DarkTheme);
-        }
         setContentView(R.layout.activity_view_map);
 
-
-        mapView = (MapView)findViewById(R.id.map);
-
-        mapView.onCreate(savedInstanceState);
-
         Intent intent = getIntent();
-        curLat = intent.getExtras().getDouble("latitude");
-        curLon = intent.getExtras().getDouble("longitude");
+        double curLat = intent.getExtras().getDouble("latitude");
+        double curLon = intent.getExtras().getDouble("longitude");
+        curLoc = new LatLng(curLat, curLon);
 
-        if (prefs.getBoolean("app_theme", false)){
-            mapView.getMapAsync(this, "tron-style-4.0.0/tron-style.yaml");
-        }else {
-            mapView.getMapAsync(this, "cinnabar-style-gh-pages/cinnabar-style.yaml");
-        }
-    }
-
-
-    @Override
-    public void onMapReady(MapController mapController) {
-        map = mapController;
-        addPoints();
-    }
-
-
-
-    @Override
-    public void onResume() {
-        super.onResume();
-        mapView.onResume();
-    }
-
-    @Override
-    public void onPause() {
-        super.onPause();
-        mapView.onPause();
-    }
-
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        mapView.onDestroy();
-    }
-
-    @Override
-    public void onLowMemory() {
-        super.onLowMemory();
-        mapView.onLowMemory();
+        // Get the SupportMapFragment and request notification
+        // when the map is ready to be used.
+        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
+                .findFragmentById(R.id.map);
+        mapFragment.getMapAsync(this);
     }
 
     /**
+     * Manipulates the map once available.
+     * This callback is triggered when the map is ready to be used.
+     */
+    @Override
+    public void onMapReady(GoogleMap googleMap) {
+        googleMap.addMarker(new MarkerOptions().position(curLoc));
+        googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(curLoc, DEFAULT_ZOOM));
+        LatLngBounds bounds = new LatLngBounds(curLoc,curLoc);
+
+        try {
+            lookupList = new JSONArray(getIntent().getStringExtra("lookup_list"));
+
+            for (int i = 0; i < lookupList.length(); i++){
+
+                JSONObject jsonObject = lookupList.getJSONObject(i);
+                LatLng mLatLon = new LatLng(jsonObject.getDouble("lat"), jsonObject.getDouble("lon"));
+                bounds = bounds.including(mLatLon);
+                googleMap.addMarker(new MarkerOptions().position(mLatLon)
+                                        .title(jsonObject.getString("name"))
+                                        .snippet("")
+                                        .icon(BitmapDescriptorFactory.fromResource(R.mipmap.ic_marker)));
+            }
+            googleMap.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, 50));
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+        googleMap.setOnMarkerClickListener(this);
+    }
+
+    /** Called when the user clicks a marker. */
+    @Override
+    public boolean onMarkerClick(final Marker marker) {
+
+        LatLng markerPosition = marker.getPosition();
+        String geoCoords = addressString(markerPosition.latitude, markerPosition.longitude, marker.getTitle());
+        geoCoords = geoCoords.replace(' ', '+');
+        openInNavApp(geoCoords);
+
+        // Return false to indicate that we have not consumed the event and that we wish
+        // for the default behavior to occur (which is for the camera to move such that the
+        // marker is centered and for the marker's info window to open, if it has one).
+        return true;
+    }
+    /**
      * Add points.
      */
-    public void addPoints(){
+    public void addPoints(GoogleMap googleMap){
+        LatLng sydney = new LatLng(-33.852, 151.211);
+        googleMap.addMarker(new MarkerOptions().position(sydney)
+                .title("Marker in Sydney"));
+        /*
         try {
             lookupList = new JSONArray(getIntent().getStringExtra("lookup_list"));
 
@@ -260,7 +254,7 @@ public class ViewMapActivity extends AppCompatActivity implements MapView.OnMapR
                 return false;
             }
         });
-
+*/
     }
 
     /**

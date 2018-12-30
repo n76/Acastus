@@ -70,10 +70,6 @@ public class MainActivity extends AppCompatActivity{
      * The constant lookupList.
      */
     public ArrayList<ResultNode> lookupList = new ArrayList<>();
-    /**
-     * The Can nav.
-     */
-    private boolean canNav = false;
 
     /**
      * The Cur lat.
@@ -419,7 +415,6 @@ public class MainActivity extends AppCompatActivity{
      */
     private void resetTime() {
         mapTime = true;
-        canNav = false;
         EditText searchQuery = (EditText) findViewById(R.id.searchText);
         String urlString = searchQuery.getText().toString();
         results = null;
@@ -721,7 +716,6 @@ public class MainActivity extends AppCompatActivity{
      * @throws IOException   the io exception
      */
     private void fetchSearchResults(String searchQuery) throws IOException {
-        Log.d(TAG,"fetchSearchResults("+searchQuery+")");
         if (ourGeocoder.isPresent()) {
             List<Address> addresses = ourGeocoder.getFromLocationName(searchQuery, 20);
 
@@ -730,7 +724,6 @@ public class MainActivity extends AppCompatActivity{
 
             for (Address addr : addresses) {
                 if (addr.hasLatitude() && addr.hasLatitude()) {
-                    //Log.d(TAG,"fetchSearchResults() addr="+addr.toString());
                     ResultNode tempNode = new ResultNode();
                     tempNode.lat = addr.getLatitude();
                     tempNode.lon = addr.getLongitude();
@@ -749,9 +742,7 @@ public class MainActivity extends AppCompatActivity{
                     lookupList.add(tempNode);
                 }
             }
-            //Log.d(TAG,"fetchSearchResults() before sort:" + lookupList.toString());
             Collections.sort(lookupList);
-            //Log.d(TAG,"fetchSearchResults() after sort:" + lookupList.toString());
 
             for (ResultNode node : lookupList) {
                 if (useLocation) {
@@ -774,7 +765,6 @@ public class MainActivity extends AppCompatActivity{
         @Override
         protected void onPostExecute(String s) {
             super.onPostExecute(s);
-            canNav = true;
             updateResultsList();
         }
         @Override

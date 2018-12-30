@@ -42,6 +42,9 @@
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value="me.dbarnett.acastus.MainActivity" />
+            <meta-data
+                android:name="com.google.android.geo.API_KEY"
+                android:value="@string/google_maps_key" />
         </activity>
         <activity
             android:name=".SettingsActivity"
