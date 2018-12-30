@@ -1,4 +1,4 @@
-package me.dbarnett.acastus;
+package org.fitchfamily.android.spawnofacastus;
 
 import org.junit.Test;
 

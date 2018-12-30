@@ -1,4 +1,4 @@
-package me.dbarnett.acastus;
+package org.fitchfamily.android.spawnofacastus;
 
 import android.content.Context;
 import android.location.Criteria;

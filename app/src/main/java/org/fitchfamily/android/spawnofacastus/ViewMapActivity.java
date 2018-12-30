@@ -1,4 +1,4 @@
-package me.dbarnett.acastus;
+package org.fitchfamily.android.spawnofacastus;
 
 // See: https://developers.google.com/maps/documentation/android-sdk/map-with-marker
 // See: https://androidclarified.com/android-example-display-current-location-on-google-map-with-fusedlocationproviderapi/

@@ -3,12 +3,12 @@
     <!-- These settings headers are only used on tablets. -->
 
     <header
-        android:fragment="me.dbarnett.acastus.SettingsActivity$GeneralPreferenceFragment"
+        android:fragment="org.fitchfamily.android.spawnofacastus.SettingsActivity$GeneralPreferenceFragment"
         android:icon="@drawable/ic_info_black_24dp"
         android:title="@string/pref_header_general" />
 
     <header
-        android:fragment="me.dbarnett.acastus.SettingsActivity$ServerPreferenceFragment"
+        android:fragment="org.fitchfamily.android.spawnofacastus.SettingsActivity$ServerPreferenceFragment"
         android:icon="@drawable/ic_sync_black_24dp"
         android:title="@string/pref_header_server" />
 

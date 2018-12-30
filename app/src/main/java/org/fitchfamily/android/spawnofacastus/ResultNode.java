@@ -1,4 +1,4 @@
-package me.dbarnett.acastus;
+package org.fitchfamily.android.spawnofacastus;
 
 /**
  * Created by daniel on 7/24/16.

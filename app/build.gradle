@@ -4,11 +4,11 @@ android {
     compileSdkVersion 27
 
     defaultConfig {
-        applicationId "me.dbarnett.acastus"
+        applicationId "org.fitchfamily.android.spawnofacastus"
         minSdkVersion 19
         targetSdkVersion 27
-        versionCode 15
-        versionName "1.13"
+        versionCode 16
+        versionName "1.0.0"
     }
     buildTypes {
         release {

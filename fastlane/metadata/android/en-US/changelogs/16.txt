@@ -1,0 +1,4 @@
+Release 1.0.0 based on Acastus v1.13
+- Use Google address API to access microG geocoder. Will probably also work on phone using gapps.
+- Use Google Maps API v2 to display map. Intended for use with microG and will not work on gapps as there is no valid API key.
+- Changed metadata, project name, etc. to show this is a new project but keeping git history to show where it came from.

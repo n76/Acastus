@@ -1,0 +1,7 @@
+This app was born out of the demise of AddressToGPS and a desire to have a way
+to inject test addresses into a microG geocoder backend.
+- It uses the Google API for address to lat/lon lookup
+- It uses the Google Maps API v2 for display of addresses found by the lookup
+- Use of Google APIs can correctly be considered "anti-features" but is needed to work with microG.
+- But it does not have a valid Maps API key so the map functionality does not work on most Android phones.
+- It is intended to be run on a phone that has microG installed along with at least one microG address provider plug-ins.
