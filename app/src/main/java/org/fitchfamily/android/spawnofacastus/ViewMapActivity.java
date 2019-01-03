@@ -11,6 +11,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.widget.Toast;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -77,23 +78,37 @@ public class ViewMapActivity extends AppCompatActivity
     @Override
     public void onMapReady(GoogleMap googleMap) {
         googleMap.addMarker(new MarkerOptions().position(curLoc));
-        googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(curLoc, DEFAULT_ZOOM));
-        LatLngBounds bounds = new LatLngBounds(curLoc,curLoc);
+        LatLngBounds bounds = null;
+        LatLng center = curLoc;
 
         try {
             lookupList = new JSONArray(getIntent().getStringExtra("lookup_list"));
 
             for (int i = 0; i < lookupList.length(); i++){
-
                 JSONObject jsonObject = lookupList.getJSONObject(i);
                 LatLng mLatLon = new LatLng(jsonObject.getDouble("lat"), jsonObject.getDouble("lon"));
-                bounds = bounds.including(mLatLon);
+                if (bounds == null) {
+                    bounds = new LatLngBounds(mLatLon, mLatLon);
+                    center = mLatLon;
+                } else
+                    bounds = bounds.including(mLatLon);
                 googleMap.addMarker(new MarkerOptions().position(mLatLon)
                                         .title(jsonObject.getString("name"))
                                         .snippet("")
                                         .icon(BitmapDescriptorFactory.fromResource(R.mipmap.ic_marker)));
             }
-            googleMap.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, 50));
+
+            // Zoom to results
+            if (lookupList.length() == 1) {
+                Log.d(TAG, "onMapReady(): Zooming to only result");
+                googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(center, DEFAULT_ZOOM));
+            } else if (bounds != null) {
+                Log.d(TAG,"onMapReady(): Setting camera bounds");
+                googleMap.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, 50));
+            } else {
+                Log.d(TAG, "onMapReady(): No results?");
+                googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(curLoc, DEFAULT_ZOOM));
+            }
         } catch (JSONException e) {
             e.printStackTrace();
         }

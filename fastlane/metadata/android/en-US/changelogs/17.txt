@@ -1,0 +1,1 @@
+- Revise logic on map zoom to result(s)
